@@ -2,6 +2,27 @@ import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import './App.css';
+import selectSound from './assets/sounds/select.mp3';
+import correctSound from './assets/sounds/correct.mp3';
+import wrongSound from './assets/sounds/wrong.mp3';
+import coinSound from './assets/sounds/coin.mp3';
+import victorySound from './assets/sounds/victory.mp3';
+import Confetti from 'react-confetti';
+import {useEffect } from 'react';
+
+// Créez les objets Audio
+const sounds = {
+  select: new Audio(selectSound),
+  correct: new Audio(correctSound),
+  wrong: new Audio(wrongSound),
+  coin: new Audio(coinSound),
+  victory: new Audio(victorySound)
+};
+
+const playSound = (soundName) => {
+    sounds[soundName].currentTime = 0; // Remet le son au début
+    sounds[soundName].play();
+};
 
 
 // Questions de démonstration (réduites)
@@ -282,6 +303,8 @@ function App() {
   const [currentProgress, setCurrentProgress] = useState({});
   const [userAnswer, setUserAnswer] = useState('');
   const [isAnswerCorrect, setIsAnswerCorrect] = useState(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+
 
   const startGame = (numberOfPlayers, playersList) => {
     const newPlayers = playersList.slice(0, numberOfPlayers).map(player => ({
@@ -293,15 +316,16 @@ function App() {
   };
 
   const checkAnswer = () => {
-    if (!userAnswer.trim()) return; // Évite de valider une réponse vide
-
     const correctAnswer = categories[selectedCategory][currentQuestion].answer.toLowerCase();
     const isCorrect = userAnswer.toLowerCase().trim() === correctAnswer.toLowerCase();
     setIsAnswerCorrect(isCorrect);
-
+    
     if (isCorrect) {
+      playSound('correct');
       const points = getPointsForQuestion(currentQuestion);
       setCurrentPoints(currentPoints + points);
+    } else {
+      playSound('wrong');
     }
   };
 
@@ -313,6 +337,15 @@ function App() {
     }
   };
 
+   const handleVictory = (player) => {
+    playSound('victory');
+    setShowConfetti(true);
+    setTimeout(() => {
+      alert(`${player.name} a gagné !`);
+      window.location.reload();
+    }, 2000);
+  };
+
   const getPointsForQuestion = (questionIndex) => {
     if (questionIndex < 3) return 1;
     if (questionIndex < 6) return 2;
@@ -321,20 +354,28 @@ function App() {
   };
 
   const handleBank = () => {
+    // Jouer le son de pièces
+    playSound('coin');
+  
     // Mettre à jour la progression de la catégorie courante
     setCurrentProgress({
       ...currentProgress,
-      [selectedCategory]: currentQuestion + 1  // +1 car on a répondu à la question courante
+      [selectedCategory]: currentQuestion + 1
     });
-
+  
     // Mettre à jour les points du joueur
     const newPlayers = [...players];
     newPlayers[currentPlayer].score += currentPoints;
     setPlayers(newPlayers);
-
+    
+    // Vérifier la victoire
     if (newPlayers[currentPlayer].score >= 25) {
-      alert(`${newPlayers[currentPlayer].name} a gagné !`);
-      window.location.reload();
+      playSound('victory');
+      setShowConfetti(true);
+      setTimeout(() => {
+        alert(`${newPlayers[currentPlayer].name} a gagné !`);
+        window.location.reload();
+      }, 2000);
     } else {
       // Réinitialisation des états et passage au joueur suivant
       setCurrentPoints(0);
@@ -365,185 +406,188 @@ function App() {
     );
   }
 
-return (
-  <div className="min-h-screen bg-black text-white p-8">
-    <div className="grid grid-cols-4 gap-8">
-      {/* Zone de jeu principale */}
-      <div className="col-span-3">
-        <Card className="bg-black border border-white">
-          <CardHeader>
-            <CardTitle className="text-white text-2xl">Le Tunnel</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Grille des catégories */}
-            <div className="grid grid-cols-4 gap-6 mb-8">
-              {Object.keys(categories).map((category) => {
-                const isCategoryCompleted = currentProgress[category] === 10;
-                return (
-                  <Button 
-                    key={category}
-                    onClick={() => {
-                      setSelectedCategory(category);
-                      setCurrentQuestion(currentProgress[category] || 0);
-                      setIsAnswerCorrect(null);
-                      setUserAnswer('');
-                    }}
-                    className={`
-                      relative h-32 p-4 rounded-lg
-                      ${isCategoryCompleted 
-                        ? 'bg-gray-800 border-gray-500 opacity-50 cursor-not-allowed' 
-                        : selectedCategory === category 
-                          ? 'bg-white text-black' 
-                          : 'bg-black text-white border border-white'}
-                      ${selectedCategory !== null && selectedCategory !== category ? 'opacity-50' : ''}
-                    `}
-                    disabled={selectedCategory !== null && selectedCategory !== category || isCategoryCompleted}
-                  >
-                    <span className="text-sm font-bold mb-2">{category}</span>
-                    <div className="absolute bottom-4 left-4 right-4 flex justify-between">
-                      {Array(10).fill('').map((_, i) => {
-                        let barColor = 'border-white';
-                        if (currentProgress[category] > i) {
-                          if (i < 3) barColor = 'bg-green-500 border-green-500';
-                          else if (i < 6) barColor = 'bg-yellow-500 border-yellow-500';
-                          else if (i < 9) barColor = 'bg-orange-500 border-orange-500';
-                          else barColor = 'bg-red-500 border-red-500';
+  return (
+    <div className="min-h-screen bg-black text-white p-8">
+      {showConfetti && <Confetti />}
+      <div className="grid grid-cols-4 gap-8">
+        {/* Zone de jeu principale */}
+        <div className="col-span-3">
+          <Card className="bg-black border border-white">
+            <CardHeader>
+              <CardTitle className="text-white text-2xl">Le Tunnel</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Grille des catégories */}
+              <div className="grid grid-cols-4 gap-6 mb-8">
+                {Object.keys(categories).map((category) => {
+                  const isCategoryCompleted = currentProgress[category] === 10;
+                  return (
+                    <Button 
+                      key={category}
+                      onClick={() => {
+                        if (!isCategoryCompleted) {
+                          playSound('select');
+                          setSelectedCategory(category);
+                          setCurrentQuestion(currentProgress[category] || 0);
+                          setIsAnswerCorrect(null);
+                          setUserAnswer('');
                         }
-
-                        return (
-                          <div 
-                            key={i} 
-                            className={`
-                              w-2 h-8 border 
-                              ${barColor}
-                              ${currentProgress[category] > i ? '' : 'bg-transparent'}
-                            `}
-                          />
-                        );
-                      })}
-                    </div>
-                  </Button>
-                );
-              })}
-            </div>
-
-            {/* Zone de question/réponse */}
-            {selectedCategory && (
-              <div className="space-y-6 text-white">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-2xl font-bold">{selectedCategory}</h3>
-                  <span className="text-xl px-4 py-2 bg-gray-800 rounded">
-                    {getPointsForQuestion(currentQuestion)} points
-                  </span>
-                </div>
-                <p className="text-xl">Question {currentQuestion + 1}</p>
-                <p className="text-2xl mb-6">{categories[selectedCategory][currentQuestion].question}</p>
-
-                <div className="space-y-4">
-                  {isAnswerCorrect === null ? (
-                    <>
-                      <input
-                        type="text"
-                        value={userAnswer}
-                        onChange={(e) => setUserAnswer(e.target.value)}
-                        className="w-full p-2 bg-black text-white border border-white rounded"
-                        placeholder="Votre réponse..."
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            checkAnswer();
+                      }}
+                      className={`
+                        relative h-32 p-4 rounded-lg transition-all duration-200
+                        ${isCategoryCompleted 
+                          ? 'bg-gray-800 border-gray-500 opacity-50 cursor-not-allowed' 
+                          : selectedCategory === category 
+                            ? 'bg-white text-black' 
+                            : 'bg-black text-white border border-white hover:bg-white hover:text-black'}
+                        ${selectedCategory !== null && selectedCategory !== category ? 'opacity-50' : ''}
+                      `}
+                      disabled={selectedCategory !== null && selectedCategory !== category || isCategoryCompleted}
+                    >
+                      <span className="text-sm font-bold mb-2">{category}</span>
+                      <div className="absolute bottom-4 left-4 right-4 flex justify-between">
+                        {Array(10).fill('').map((_, i) => {
+                          let barColor = 'border-white';
+                          if (currentProgress[category] > i) {
+                            if (i < 3) barColor = 'bg-green-500 border-green-500';
+                            else if (i < 6) barColor = 'bg-yellow-500 border-yellow-500';
+                            else if (i < 9) barColor = 'bg-orange-500 border-orange-500';
+                            else barColor = 'bg-red-500 border-red-500';
                           }
-                        }}
-                      />
-                      <Button 
-                        onClick={checkAnswer} 
-                        className="w-full bg-white text-black hover:bg-gray-200"
-                      >
-                        Valider la réponse
-                      </Button>
-                    </>
-                  ) : isAnswerCorrect ? (
-                    <div className="space-y-4">
-                      <div className="p-4 bg-green-500/20 border border-green-500 rounded">
-                        <p className="text-green-500">Correct !</p>
+                          return (
+                            <div 
+                              key={i} 
+                              className={`
+                                w-2 h-8 border 
+                                ${barColor}
+                                ${currentProgress[category] > i ? '' : 'bg-transparent'}
+                              `}
+                            />
+                          );
+                        })}
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <Button 
-                          onClick={handleNextQuestion}
-                          className="bg-white text-black hover:bg-gray-200"
-                          disabled={currentQuestion === 9}
-                        >
-                          Question suivante
-                        </Button>
-                        <Button 
-                          onClick={handleBank}
-                          className="bg-white text-black hover:bg-gray-200"
-                        >
-                          Banquer {currentPoints} points
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="p-4 bg-red-500/20 border border-red-500 rounded">
-                        <p className="text-red-500">Incorrect !</p>
-                      </div>
-                      <Button 
-                        onClick={nextPlayer}
-                        className="w-full bg-white text-black hover:bg-gray-200"
-                      >
-                        Au joueur suivant
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                    </Button>
+                  );
+                })}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Liste des joueurs */}
-      <div className="col-span-1">
-        <Card className="bg-black border border-white">
-          <CardHeader>
-            <CardTitle className="text-white">Tour de {players[currentPlayer]?.name}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {players.map((player, index) => (
-                <div 
-                  key={player.id} 
-                  className={`
-                    p-4 rounded border transition-all duration-200
-                    ${currentPlayer === index 
-                      ? 'bg-white text-black border-white scale-105 transform shadow-lg' 
-                      : 'bg-black text-white border-white opacity-70'}
-                  `}
-                >
+  
+              {/* Zone de question/réponse */}
+              {selectedCategory && (
+                <div className="space-y-6 text-white">
                   <div className="flex justify-between items-center">
-                    <h3 className="font-bold text-lg">
-                      {player.name}
-                      {currentPlayer === index && 
-                        <span className="ml-2 text-xs bg-black text-white px-2 py-1 rounded">
-                          En train de jouer
-                        </span>
-                      }
-                    </h3>
-                    <p className="font-bold text-xl">{player.score} pts</p>
+                    <h3 className="text-2xl font-bold">{selectedCategory}</h3>
+                    <span className="text-xl px-4 py-2 bg-gray-800 rounded">
+                      {getPointsForQuestion(currentQuestion)} points
+                    </span>
+                  </div>
+                  <p className="text-xl">Question {currentQuestion + 1}</p>
+                  <p className="text-2xl mb-6">{categories[selectedCategory][currentQuestion].question}</p>
+  
+                  <div className="space-y-4">
+                    {isAnswerCorrect === null ? (
+                      <>
+                        <input
+                          type="text"
+                          value={userAnswer}
+                          onChange={(e) => setUserAnswer(e.target.value)}
+                          className="w-full p-2 bg-black text-white border border-white rounded"
+                          placeholder="Votre réponse..."
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              checkAnswer();
+                            }
+                          }}
+                        />
+                        <Button 
+                          onClick={checkAnswer} 
+                          className="w-full bg-white text-black hover:bg-gray-200"
+                        >
+                          Valider la réponse
+                        </Button>
+                      </>
+                    ) : isAnswerCorrect ? (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-green-500/20 border border-green-500 rounded">
+                          <p className="text-green-500">Correct !</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Button 
+                            onClick={handleNextQuestion}
+                            className="bg-white text-black hover:bg-gray-200"
+                            disabled={currentQuestion === 9}
+                          >
+                            Question suivante
+                          </Button>
+                          <Button 
+                            onClick={handleBank}
+                            className="bg-white text-black hover:bg-gray-200"
+                          >
+                            Banquer {currentPoints} points
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-red-500/20 border border-red-500 rounded">
+                          <p className="text-red-500">Incorrect !</p>
+                        </div>
+                        <Button 
+                          onClick={nextPlayer}
+                          className="w-full bg-white text-black hover:bg-gray-200"
+                        >
+                          Au joueur suivant
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
-            {currentPoints > 0 && (
-              <div className="mt-4 p-4 border border-green-500 rounded">
-                <p className="text-green-500">Points en jeu : {currentPoints}</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+  
+        {/* Liste des joueurs */}
+        <div className="col-span-1">
+          <Card className="bg-black border border-white">
+            <CardHeader>
+              <CardTitle className="text-white">Tour de {players[currentPlayer]?.name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {players.map((player, index) => (
+                  <div 
+                    key={player.id} 
+                    className={`
+                      p-4 rounded border transition-all duration-200
+                      ${currentPlayer === index 
+                        ? 'bg-white text-black border-white scale-105 transform shadow-lg' 
+                        : 'bg-black text-white border-white opacity-70'}
+                    `}
+                  >
+                    <div className="flex justify-between items-center">
+                      <h3 className="font-bold text-lg">
+                        {player.name}
+                        {currentPlayer === index && 
+                          <span className="ml-2 text-xs bg-black text-white px-2 py-1 rounded">
+                            En train de jouer
+                          </span>
+                        }
+                      </h3>
+                      <p className="font-bold text-xl">{player.score} pts</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
+              {currentPoints > 0 && (
+                <div className="mt-4 p-4 border border-green-500 rounded">
+                  <p className="text-green-500">Points en jeu : {currentPoints}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
 }
 export default App;
