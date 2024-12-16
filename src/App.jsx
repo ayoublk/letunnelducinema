@@ -414,7 +414,7 @@ function App() {
     newPlayers[currentPlayer].score += currentPoints;
     setPlayers(newPlayers);
     
-    if (newPlayers[currentPlayer].score >= 1) {
+    if (newPlayers[currentPlayer].score >= 25) {
       playSound('victory');
       setShowConfetti(true);
       setShowVictoryModal(true);
@@ -443,7 +443,7 @@ function App() {
         <div className="col-span-3">
           <Card className="bg-black border border-white">
             <CardHeader>
-              <CardTitle className="text-white text-2xl">Le Tunnel</CardTitle>
+              <CardTitle className="text-white text-2xl">Le Tunnel du Cinéma - Le 7ème Stream</CardTitle>
             </CardHeader>
             <CardContent>
               {/* Grille des catégories */}
