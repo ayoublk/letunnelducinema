@@ -8,7 +8,6 @@ import wrongSound from './assets/sounds/wrong.mp3';
 import coinSound from './assets/sounds/coin.mp3';
 import victorySound from './assets/sounds/victory.mp3';
 import Confetti from 'react-confetti';
-import {useEffect } from 'react';
 
 // Créez les objets Audio
 const sounds = {
@@ -18,6 +17,12 @@ const sounds = {
   coin: new Audio(coinSound),
   victory: new Audio(victorySound)
 };
+
+sounds.select.volume = 1;  // 30% du volume
+sounds.correct.volume = 0.1; // 50% du volume
+sounds.wrong.volume = 0.03;   // 40% du volume
+sounds.coin.volume = 0.1;    // 40% du volume
+sounds.victory.volume = 0.06; // 60% du volume
 
 const playSound = (soundName) => {
     sounds[soundName].currentTime = 0; // Remet le son au début
@@ -209,6 +214,40 @@ const categories = {
   ],
 };
 
+const VictoryModal = ({ winner, players, onRestart }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-black border-2 border-white p-8 rounded-lg w-96 text-center">
+        <h2 className="text-4xl font-bold text-white mb-4">Victoire !</h2>
+        <p className="text-2xl text-white mb-8">{winner.name} a gagné !</p>
+        
+        <div className="space-y-4 mb-8">
+          {players.map(player => (
+            <div 
+              key={player.id}
+              className={`p-4 rounded border ${
+                player.id === winner.id 
+                  ? 'border-yellow-500 bg-white text-black' 
+                  : 'border-white text-white'
+              }`}
+            >
+              <p className="font-bold">{player.name}</p>
+              <p className="text-xl">{player.score} points</p>
+            </div>
+          ))}
+        </div>
+
+        <Button 
+          onClick={onRestart}
+          className="bg-white text-black hover:bg-gray-200 w-full"
+        >
+          Nouvelle partie
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 const PlayerSelection = ({ onStart }) => {
   const [players, setPlayers] = useState(Array(3).fill(null).map((_, index) => ({
     id: index + 1,
@@ -246,6 +285,10 @@ const PlayerSelection = ({ onStart }) => {
       return newPlayers;
     });
   };
+
+  
+  
+
 
   return (
     <Card className="w-full max-w-lg mx-auto bg-black text-white border-white">
@@ -315,6 +358,18 @@ function App() {
     setGameStarted(true);
   };
 
+  const nextPlayer = () => {
+    setCurrentProgress({
+      ...currentProgress,
+      [selectedCategory]: currentQuestion
+    });
+    setCurrentPoints(0);
+    setSelectedCategory(null);
+    setIsAnswerCorrect(null);
+    setUserAnswer('');
+    setCurrentPlayer((currentPlayer + 1) % players.length);
+  };
+
   const checkAnswer = () => {
     const correctAnswer = categories[selectedCategory][currentQuestion].answer.toLowerCase();
     const isCorrect = userAnswer.toLowerCase().trim() === correctAnswer.toLowerCase();
@@ -337,14 +392,8 @@ function App() {
     }
   };
 
-   const handleVictory = (player) => {
-    playSound('victory');
-    setShowConfetti(true);
-    setTimeout(() => {
-      alert(`${player.name} a gagné !`);
-      window.location.reload();
-    }, 2000);
-  };
+
+  const [showVictoryModal, setShowVictoryModal] = useState(false);
 
   const getPointsForQuestion = (questionIndex) => {
     if (questionIndex < 3) return 1;
@@ -354,48 +403,28 @@ function App() {
   };
 
   const handleBank = () => {
-    // Jouer le son de pièces
     playSound('coin');
   
-    // Mettre à jour la progression de la catégorie courante
     setCurrentProgress({
       ...currentProgress,
       [selectedCategory]: currentQuestion + 1
     });
   
-    // Mettre à jour les points du joueur
     const newPlayers = [...players];
     newPlayers[currentPlayer].score += currentPoints;
     setPlayers(newPlayers);
     
-    // Vérifier la victoire
-    if (newPlayers[currentPlayer].score >= 25) {
+    if (newPlayers[currentPlayer].score >= 1) {
       playSound('victory');
       setShowConfetti(true);
-      setTimeout(() => {
-        alert(`${newPlayers[currentPlayer].name} a gagné !`);
-        window.location.reload();
-      }, 2000);
+      setShowVictoryModal(true);
     } else {
-      // Réinitialisation des états et passage au joueur suivant
       setCurrentPoints(0);
       setSelectedCategory(null);
       setIsAnswerCorrect(null);
       setUserAnswer('');
       setCurrentPlayer((currentPlayer + 1) % players.length);
     }
-  };
-
-  const nextPlayer = () => {
-    setCurrentProgress({
-      ...currentProgress,
-      [selectedCategory]: currentQuestion
-    });
-    setCurrentPoints(0);
-    setSelectedCategory(null);
-    setIsAnswerCorrect(null);
-    setUserAnswer('');
-    setCurrentPlayer((currentPlayer + 1) % players.length);
   };
 
   if (!gameStarted) {
@@ -583,11 +612,21 @@ function App() {
                   <p className="text-green-500">Points en jeu : {currentPoints}</p>
                 </div>
               )}
+              
             </CardContent>
           </Card>
         </div>
       </div>
+      {showVictoryModal && (
+      <VictoryModal 
+        winner={players[currentPlayer]}
+        players={players}
+        onRestart={() => window.location.reload()}
+      />
+    )}
     </div>
+
+    
   );
 }
 export default App;
