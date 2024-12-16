@@ -189,16 +189,41 @@ const categories = {
 };
 
 const PlayerSelection = ({ onStart }) => {
-  const [players, setPlayers] = useState([
-    { id: 1, name: "Joueur 1" },
-    { id: 2, name: "Joueur 2" }
-  ]);
+  const [players, setPlayers] = useState(Array(3).fill(null).map((_, index) => ({
+    id: index + 1,
+    name: `Joueur ${index + 1}`,
+    isDefaultName: true // Ajout d'un flag pour suivre si c'est le nom par défaut
+  })));
   const [numberOfPlayers, setNumberOfPlayers] = useState(2);
 
   const handleNameChange = (id, newName) => {
-    setPlayers(players.map(player => 
-      player.id === id ? { ...player, name: newName } : player
-    ));
+    setPlayers(players.map(player => {
+      if (player.id === id) {
+        return {
+          ...player,
+          name: newName,
+          isDefaultName: false // Le nom n'est plus le défaut dès qu'on le modifie
+        };
+      }
+      return player;
+    }));
+  };
+
+  // Si on change le nombre de joueurs, réinitialiser les noms pour les nouveaux joueurs
+  const handlePlayerCountChange = (count) => {
+    setNumberOfPlayers(count);
+    setPlayers(prev => {
+      const newPlayers = [...prev];
+      while (newPlayers.length < count) {
+        const id = newPlayers.length + 1;
+        newPlayers.push({
+          id,
+          name: `Joueur ${id}`,
+          isDefaultName: true
+        });
+      }
+      return newPlayers;
+    });
   };
 
   return (
@@ -209,13 +234,13 @@ const PlayerSelection = ({ onStart }) => {
       <CardContent className="space-y-6">
         <div className="flex justify-center gap-4 mb-6">
           <Button 
-            onClick={() => setNumberOfPlayers(2)}
+            onClick={() => handlePlayerCountChange(2)}
             className={`${numberOfPlayers === 2 ? 'bg-white text-black' : 'bg-black text-white border-white border'}`}
           >
             2 Joueurs
           </Button>
           <Button 
-            onClick={() => setNumberOfPlayers(3)}
+            onClick={() => handlePlayerCountChange(3)}
             className={`${numberOfPlayers === 3 ? 'bg-white text-black' : 'bg-black text-white border-white border'}`}
           >
             3 Joueurs
@@ -223,21 +248,21 @@ const PlayerSelection = ({ onStart }) => {
         </div>
 
         <div className="space-y-4">
-          {Array.from({ length: numberOfPlayers }).map((_, index) => (
-            <div key={index} className="flex gap-4 items-center">
+          {players.slice(0, numberOfPlayers).map((player) => (
+            <div key={player.id} className="flex gap-4 items-center">
               <input
                 type="text"
-                value={players[index]?.name || `Joueur ${index + 1}`}
-                onChange={(e) => handleNameChange(index + 1, e.target.value)}
+                value={player.name}
+                onChange={(e) => handleNameChange(player.id, e.target.value)}
                 className="w-full p-2 bg-black text-white border border-white rounded"
-                placeholder={`Nom du joueur ${index + 1}`}
+                placeholder={`Nom du joueur ${player.id}`}
               />
             </div>
           ))}
         </div>
 
         <Button 
-          onClick={() => onStart(numberOfPlayers, players)}
+          onClick={() => onStart(numberOfPlayers, players.slice(0, numberOfPlayers))}
           className="w-full mt-6 bg-white text-black hover:bg-gray-200"
         >
           Commencer la partie
