@@ -214,19 +214,30 @@ const categories = {
   ],
 };
 
-const VictoryModal = ({ winner, players, onRestart }) => {
+const VictoryModal = ({ winners, players, onRestart }) => {
+  const getTitle = () => {
+    if (winners.length > 1) return "Égalité !";
+    return "Victoire !";
+  };
+
+  const getMessage = () => {
+    if (winners.length === 3) return "Incroyable ! Les trois joueurs sont à égalité !";
+    if (winners.length === 2) return `${winners[0].name} et ${winners[1].name} sont à égalité !`;
+    return `${winners[0].name} a gagné !`;
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-black border-2 border-white p-8 rounded-lg w-96 text-center">
-        <h2 className="text-4xl font-bold text-white mb-4">Victoire !</h2>
-        <p className="text-2xl text-white mb-8">{winner.name} a gagné !</p>
+        <h2 className="text-4xl font-bold text-white mb-4">{getTitle()}</h2>
+        <p className="text-2xl text-white mb-8">{getMessage()}</p>
         
         <div className="space-y-4 mb-8">
           {players.map(player => (
             <div 
               key={player.id}
               className={`p-4 rounded border ${
-                player.id === winner.id 
+                winners.includes(player) 
                   ? 'border-yellow-500 bg-white text-black' 
                   : 'border-white text-white'
               }`}
@@ -286,8 +297,7 @@ const PlayerSelection = ({ onStart }) => {
     });
   };
 
-  
-  
+
 
 
   return (
@@ -347,6 +357,8 @@ function App() {
   const [userAnswer, setUserAnswer] = useState('');
   const [isAnswerCorrect, setIsAnswerCorrect] = useState(null);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [winners, setWinners] = useState([]);
+
 
 
   const startGame = (numberOfPlayers, playersList) => {
@@ -426,6 +438,21 @@ function App() {
       setCurrentPlayer((currentPlayer + 1) % players.length);
     }
   };
+
+  const handleEndGame = () => {
+    // Trier les joueurs par score (du plus haut au plus bas)
+    const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+    
+    // Trouver tous les joueurs avec le score le plus élevé
+    const highestScore = sortedPlayers[0].score;
+    const winners = players.filter(player => player.score === highestScore);
+  
+    setWinners(winners); // Ajoutez cet état
+    setShowVictoryModal(true);
+    setShowConfetti(true);
+    playSound('victory');
+  };
+
 
   if (!gameStarted) {
     return (
@@ -612,21 +639,30 @@ function App() {
                   <p className="text-green-500">Points en jeu : {currentPoints}</p>
                 </div>
               )}
-              
             </CardContent>
           </Card>
         </div>
       </div>
+  
+      {/* Bouton Terminer */}
+      <div className="fixed bottom-8 right-8">
+        <Button 
+          onClick={handleEndGame}
+          className="bg-red-500 text-white hover:bg-red-600 px-6 py-3"
+        >
+          Terminer la partie
+        </Button>
+      </div>
+  
+      {/* Modal de victoire */}
       {showVictoryModal && (
-      <VictoryModal 
-        winner={players[currentPlayer]}
-        players={players}
-        onRestart={() => window.location.reload()}
-      />
-    )}
+        <VictoryModal 
+          winners={winners}
+          players={players}
+          onRestart={() => window.location.reload()}
+        />
+      )}
     </div>
-
-    
   );
 }
 export default App;
