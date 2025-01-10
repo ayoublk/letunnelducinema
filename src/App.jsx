@@ -729,7 +729,7 @@ function App() {
     newPlayers[currentPlayer].score += currentPoints;
     setPlayers(newPlayers);
     
-    if (newPlayers[currentPlayer].score >= 2) {
+    if (newPlayers[currentPlayer].score >= 25) {
       playSound('victory');
       setShowConfetti(true);
       setWinners([newPlayers[currentPlayer]]); // Ajout de cette ligne
